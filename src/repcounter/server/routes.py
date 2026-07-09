@@ -113,19 +113,12 @@ async def video_stream(session_id: str):
         return {"error": "session not found"}
 
     async def generate():
-        while state.running or not state.frame_queue.empty():
-            try:
-                jpg = await asyncio.wait_for(
-                    asyncio.to_thread(state.frame_queue.get),
-                    timeout=0.5,
-                )
-                yield (b"--frame\r\n"
-                       b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n")
-            except asyncio.TimeoutError:
-                continue
-            except Exception:
-                if not state.running and state.frame_queue.empty():
-                    break
+        while True:
+            jpg = await asyncio.to_thread(state.frame_queue.get)
+            if jpg is None:
+                break
+            yield (b"--frame\r\n"
+                   b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n")
     return StreamingResponse(
         generate(),
         media_type="multipart/x-mixed-replace; boundary=frame",
@@ -154,41 +147,30 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     await ws.send_json({"status": "processing"})
 
     try:
-        while state.running or not state.data_queue.empty():
-            try:
-                data = await asyncio.wait_for(
-                    asyncio.to_thread(state.data_queue.get),
-                    timeout=0.5,
-                )
-                if data.complete:
-                    s = state.session
-                    reps = s.summary().get("reps", 0) if s else 0
-                    dur = s.summary().get("duration_sec", 0) if s else 0
-                    await ws.send_json({
-                        "complete": True,
-                        "rep_count": reps,
-                        "duration_sec": dur,
-                    })
-                    break
+        while True:
+            data = await asyncio.to_thread(state.data_queue.get)
+            if data.complete:
+                s = state.session
+                reps = s.summary().get("reps", 0) if s else 0
+                dur = s.summary().get("duration_sec", 0) if s else 0
                 await ws.send_json({
-                    "t": data.timestamp,
-                    "angle": data.angle,
-                    "visibility": data.visibility,
-                    "rep_count": data.rep_count,
-                    "rep_state": data.rep_state,
-                    "paused": data.paused,
-                    "partial": data.partial,
-                    "lost_track": data.lost_track,
-                    "uncalibrated": data.uncalibrated,
-                    "fps": data.fps,
+                    "complete": True,
+                    "rep_count": reps,
+                    "duration_sec": dur,
                 })
-            except WebSocketDisconnect:
-                raise
-            except asyncio.TimeoutError:
-                continue
-            except Exception:
-                if not state.running and state.data_queue.empty():
-                    break
+                break
+            await ws.send_json({
+                "t": data.timestamp,
+                "angle": data.angle,
+                "visibility": data.visibility,
+                "rep_count": data.rep_count,
+                "rep_state": data.rep_state,
+                "paused": data.paused,
+                "partial": data.partial,
+                "lost_track": data.lost_track,
+                "uncalibrated": data.uncalibrated,
+                "fps": data.fps,
+            })
     except WebSocketDisconnect:
         pass
 

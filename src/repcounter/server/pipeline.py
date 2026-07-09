@@ -183,21 +183,25 @@ def run_pipeline(
             _log(f"[{session_id}] video ended ({state.frame_count} frames)")
             state.completed = True
             session.stop()
-            data_sentinel = FrameData(
-                timestamp=time.monotonic(),
-                fps=0.0,
-                rep_count=counter.rep_count,
-                complete=True,
-            )
-            state.data_queue.put(data_sentinel)
+            state.data_queue.put(FrameData(
+                timestamp=time.monotonic(), fps=0.0,
+                rep_count=counter.rep_count, complete=True,
+            ))
 
     except Exception as exc:
         state.error = str(exc)
         _log(f"[{session_id}] ERROR: {exc}")
     finally:
         state.running = False
-        if session and (state.completed or state.error):
-            session.stop()
+        # Push sentinels so blocking get() in async handlers can exit.
+        # Always sentinel — regardless of completion/error — to unblock
+        # webcam and uploaded-video handlers alike.
+        state.frame_queue.put(None)
+        state.data_queue.put(FrameData(
+            timestamp=0, fps=0.0, complete=True,
+        ))
+        if session:
+            session.stop()  # idempotent (no-op if already stopped)
             if state.completed and state.upload_path:
                 try:
                     Path(state.upload_path).unlink(missing_ok=True)
