@@ -63,13 +63,23 @@ def test_webcam_capture_sets_resolution():
     cap.set.assert_any_call(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
 
+def test_webcam_capture_unreadable_raises():
+    cap = _mock_cap([], is_opened=False)
+    with patch("cv2.VideoCapture", return_value=cap):
+        with pytest.raises(ValueError, match="cannot open camera"):
+            WebcamCapture(0)
+
+
 def test_webcam_capture_timestamps_monotonic():
     cap = _mock_cap(
         [(True, _DUMMY_BGR), (True, _DUMMY_BGR), (True, _DUMMY_BGR)]
     )
     with patch("cv2.VideoCapture", return_value=cap):
-        with patch("time.monotonic", side_effect=[1.0, 2.0, 3.0]):
-            frames = list(WebcamCapture(0))
+        with patch("time.monotonic", side_effect=[1.0, 2.0, 3.0]) as mock_m:
+            with patch("time.time", return_value=999.0) as mock_t:
+                frames = list(WebcamCapture(0))
+    mock_m.assert_called()
+    mock_t.assert_not_called()
     timestamps = [f.timestamp for f in frames]
     assert all(t2 >= t1 for t1, t2 in zip(timestamps, timestamps[1:]))
 
@@ -128,8 +138,11 @@ def test_video_file_capture_timestamps_monotonic():
         [(True, _DUMMY_BGR), (True, _DUMMY_BGR), (True, _DUMMY_BGR)]
     )
     with patch("cv2.VideoCapture", return_value=cap):
-        with patch("time.monotonic", side_effect=[10.0, 10.5, 11.0]):
-            frames = list(VideoFileCapture("dummy.mp4"))
+        with patch("time.monotonic", side_effect=[10.0, 10.5, 11.0]) as mock_m:
+            with patch("time.time", return_value=999.0) as mock_t:
+                frames = list(VideoFileCapture("dummy.mp4"))
+    mock_m.assert_called()
+    mock_t.assert_not_called()
     timestamps = [f.timestamp for f in frames]
     assert all(t2 >= t1 for t1, t2 in zip(timestamps, timestamps[1:]))
 

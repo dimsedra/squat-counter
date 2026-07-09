@@ -81,5 +81,5 @@ class PoseLandmarkerDetector:
             result = self._detector.detect(mp_image)
         except Exception:
             return None
-        t = timestamp if timestamp is not None else time.time()
+        t = timestamp if timestamp is not None else time.monotonic()
         return self._to_pose_frame(result, timestamp=t)

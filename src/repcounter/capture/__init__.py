@@ -32,6 +32,8 @@ class Capture(Protocol):
 class WebcamCapture:
     def __init__(self, source: int = 0, *, width: int = 1280, height: int = 720) -> None:
         self._cap = cv2.VideoCapture(source)
+        if not self._cap.isOpened():
+            raise ValueError(f"cannot open camera {source}")
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
