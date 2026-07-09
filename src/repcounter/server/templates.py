@@ -66,7 +66,7 @@ button:hover{background:#2ea043}
 """
 
 _WS_JS = """\
-const SID=\"{sid}";let ws=null,complete=false;
+const SID=\"{sid}";let ws=null,complete=false,hasData=false;
 function cws(){
   if(complete)return;
   const p=location.protocol==='https:'?'wss:':'ws:';
@@ -74,13 +74,22 @@ function cws(){
   ws.onmessage=function(e){
     var d=JSON.parse(e.data);
     if(d.complete){
-      complete=true;ws.close();
+      complete=true;if(ws)ws.close();
       document.getElementById('rc').textContent=d.rep_count;
       document.getElementById('bb').classList.remove('hidden');
+      document.getElementById('bw').classList.add('hidden');
       document.getElementById('btn-stop').style.display='none';
       done(d);
       return;
     }
+    if(d.status){
+      if(d.status==='processing'){
+        document.getElementById('bw').classList.remove('hidden');
+      }
+      return;
+    }
+    hasData=true;
+    document.getElementById('bw').classList.add('hidden');
     document.getElementById('rc').textContent=d.rep_count;
     document.getElementById('ag').textContent=d.angle!=null?d.angle.toFixed(1)+'\\u00b0':'\\u2014';
     document.getElementById('st').textContent=d.rep_state||'\\u2014';
@@ -89,7 +98,7 @@ function cws(){
     tb('bp',d.paused);tb('bpr',d.partial);tb('bl',d.lost_track);tb('bu',d.uncalibrated);
   };
   ws.onclose=function(){
-    if(!complete&&document.getElementById('vs'))setTimeout(cws,2000);
+    if(!complete&&!hasData)setTimeout(cws,2000);
   };
 }
 function done(d){
@@ -183,6 +192,7 @@ def render_watch(session_id: str, source: str) -> HTMLResponse:
         '<span class="metric-label">Visibility</span>'
         '<span class="metric-value" id="vi">&mdash;</span></div>'
         '<div class="badge-row">'
+        '<span id="bw" class="badge badge-warning hidden">PROCESSING</span>'
         '<span id="bp" class="badge hidden">PAUSED</span>'
         '<span id="bpr" class="badge hidden">PARTIAL</span>'
         '<span id="bl" class="badge badge-danger hidden">LOST TRACK</span>'

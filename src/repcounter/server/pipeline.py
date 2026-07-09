@@ -24,6 +24,10 @@ from repcounter.server.session import SessionRecorder
 from repcounter.types import CountStep
 
 
+def _log(msg: str) -> None:
+    print(f"  [pipeline] {msg}")
+
+
 @dataclass
 class FrameData:
     """Snapshotted per-frame data pushed via WebSocket."""
@@ -65,8 +69,15 @@ def run_pipeline(
     For ``VideoFileCapture`` the session is auto-finalised when the video ends.
     For ``WebcamCapture`` the caller must stop via ``state.running = False``.
     """
+    session_id = session.session_id[:8] if session else "?"
+    cap_type = "file" if isinstance(capture, VideoFileCapture) else "webcam"
+    _log(f"[{session_id}] pipeline starting (capture={cap_type})")
+
     try:
+        _log(f"[{session_id}] loading model ...")
         det = PoseLandmarkerDetector(model_path)
+        _log(f"[{session_id}] model loaded")
+
         fe = FeatureExtractor()
         counter = RepCounter()
 
@@ -78,11 +89,16 @@ def run_pipeline(
             session.set_fps(fps_estimate)
 
         is_file = isinstance(capture, VideoFileCapture)
+        first_frame = True
 
         t0 = time.monotonic()
         for frame in capture:
             if not state.running:
                 break
+
+            if first_frame:
+                _log(f"[{session_id}] first frame received, processing ...")
+                first_frame = False
 
             pose = det.detect(frame.image, timestamp=frame.timestamp)
             landmarks = (
@@ -128,6 +144,9 @@ def run_pipeline(
             state.data_queue.put(data)
             state.frame_count += 1
 
+            if state.frame_count % 100 == 0:
+                _log(f"[{session_id}] {state.frame_count} frames processed")
+
             if session:
                 session.append_frame(
                     state.frame_count, frame.timestamp,
@@ -144,28 +163,29 @@ def run_pipeline(
 
         # ── File playback ended — auto-finalise ──────────────────────────
         if is_file and session:
+            _log(f"[{session_id}] video ended ({state.frame_count} frames)")
             state.completed = True
             session.stop()
-            # Push a sentinel so the WebSocket knows processing is done.
             data_sentinel = FrameData(
                 timestamp=time.monotonic(),
                 fps=0.0,
+                rep_count=counter.rep_count,
             )
-            data_sentinel.rep_count = counter.rep_count
             state.data_queue.put(data_sentinel)
 
     except Exception as exc:
         state.error = str(exc)
+        _log(f"[{session_id}] ERROR: {exc}")
     finally:
         state.running = False
-        # Auto-finalise on completion (file) or error; webcam stays open.
         if session and (state.completed or state.error):
             session.stop()
-            # Remove the uploaded file to avoid accumulating garbage.
             if state.completed and state.upload_path:
                 try:
                     Path(state.upload_path).unlink(missing_ok=True)
+                    _log(f"[{session_id}] cleaned up uploaded file")
                 except Exception:
                     pass
         det.release()
         capture.release()
+        _log(f"[{session_id}] pipeline done")

@@ -134,6 +134,19 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
         return
 
     await ws.accept()
+
+    # Already completed — send complete immediately, no reconnect.
+    if state.completed:
+        s = state.session
+        reps = s.summary().get("reps", 0) if s else 0
+        dur = s.summary().get("duration_sec", 0) if s else 0
+        await ws.send_json({"complete": True, "rep_count": reps, "duration_sec": dur})
+        await ws.close()
+        return
+
+    # Let the frontend know we are alive and processing.
+    await ws.send_json({"status": "processing"})
+
     try:
         while state.running or not state.data_queue.empty():
             try:
@@ -150,6 +163,8 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                     "uncalibrated": data.uncalibrated,
                     "fps": data.fps,
                 })
+            except WebSocketDisconnect:
+                raise
             except Exception:
                 if not state.running and state.data_queue.empty():
                     break
@@ -157,16 +172,12 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
         # Signal completion (video file finished processing)
         if state.completed:
             s = state.session
-            reps = 0
-            dur = 0
-            if s:
-                sm = s.summary()
-                reps = sm.get("reps", 0)
-                dur = sm.get("frames", 0) / (sm.get("fps", 30) or 30)
+            reps = s.summary().get("reps", 0) if s else 0
+            dur = s.summary().get("duration_sec", 0) if s else 0
             await ws.send_json({
                 "complete": True,
                 "rep_count": reps,
-                "duration_sec": round(dur, 1),
+                "duration_sec": dur,
             })
     except WebSocketDisconnect:
         pass
