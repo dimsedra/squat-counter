@@ -23,18 +23,41 @@ analysis.
 
 ## Quickstart
 
-```bash
-# 1. Install
-pip install -r requirements.txt
+### Zero-dependency — from a completely clean machine
 
-# 2. Download MediaPipe pose model
-python scripts/fetch_model.py
+```powershell
+cd mediapipe-repcounter
+irm https://astral.sh/uv/install.ps1 | iex
+uv venv
+uv pip install -r requirements.txt
+uv run python scripts/fetch_model.py
+```
 
-# 3a. Run web dashboard
-python scripts/serve.py
+Or as a single line:
 
-# 3b. Or run desktop window (OpenCV)
-python scripts/run.py --source 0
+```powershell
+cd mediapipe-repcounter; irm https://astral.sh/uv/install.ps1 | iex; uv venv; uv pip install -r requirements.txt; uv run python scripts/fetch_model.py
+```
+
+### If you already have Python
+
+```powershell
+python scripts/install.py
+```
+
+The install script detects what's already present and skips completed steps.
+It prefers `uv` when available, otherwise falls back to `venv` + `pip`.
+
+### Run
+
+```powershell
+uv run python scripts/serve.py
+```
+
+Or (if you used the stdlib fallback):
+
+```powershell
+.venv\Scripts\python scripts\serve.py
 ```
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) to start counting.
@@ -73,6 +96,7 @@ Each session produces:
 |---|---|
 | `scripts/run.py` | Desktop app (OpenCV window) — webcam or video file |
 | `scripts/serve.py` | Web dashboard (FastAPI + uvicorn) |
+| `scripts/install.py` | One-shot installer — venv, deps, model download (idempotent) |
 | `scripts/fetch_model.py` | Download `pose_landmarker_full.task` |
 | `scripts/fetch_test_clip.py` | Download test fixture video |
 | `scripts/extract_frames.py` | Extract frames from a video file |
