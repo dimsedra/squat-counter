@@ -3,11 +3,18 @@
 The remaining interface seams for the pure `Features` and `Count` layers, resolved by
 grilling (2026-07-09) and grounded in `docs/research/squat-rep-counting.md`.
 
-**A. Angle source — 2D image landmarks.** The interior hip–knee–ankle angle is computed
-from **image `landmark.x` / `landmark.y`** (normalized to the frame). The `z` (depth)
-channel is **ignored** — it is the least reliable MediaPipe output (Dill et al. 2023/2024,
-ADR-0002). World-landmark `x/y` was considered but adds conversion for no gain at our
-diagonal-view target.
+**A. Angle source — 2D coordinates, world-landmark `x/y` preferred.** The interior
+hip–knee–ankle angle is computed from **2D coordinates, preferring MediaPipe
+world-landmark `x/y`** (metric, viewpoint-stable — research §6, ADR-0004) and falling back
+to image `x/y` when world landmarks are unavailable. The `z` (depth) channel is **ignored**
+in both cases — it is the least reliable MediaPipe output (Dill et al. 2023/2024, ADR-0002).
+
+**Correction (2026-07-09):** an earlier draft claimed image `x/y` had "no gain" over world
+`x/y`. That *contradicted* the project's own research (world coordinates are more
+viewpoint-stable) and the targeted diagonal ~45° view, where perspective foreshortening
+biases image-2D angles and threatens the ~100° depth threshold (researcher audit #1/#7).
+World `x/y` is now preferred precisely because it removes that bias; the fallback to image
+`x/y` is retained only when world landmarks are absent.
 
 **B. Leg selection.** Compute the angle **per leg (left and right)**; feed the FSM the
 leg with the **higher `visibility`**, and **average the two when both are confidently

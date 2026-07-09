@@ -12,10 +12,10 @@ Capture ──frames──▶ Detect ──landmarks──▶ Features ──ang
 
 - **Capture** — frames from webcam OR recorded file (ADR-0006). Adapter.
 - **Detect** — frame → 33 landmarks via Tasks Vision `PoseLandmarker` (ADR-0004). Adapter.
-- **Features** — landmarks → **interior hip–knee–ankle angle from 2D image `x/y`
-  (z ignored, ADR-0007-A)**, computed **per leg**, using the higher-visibility leg or the
-  average when both clear (ADR-0007-B); **EMA-smoothed** (ADR-0007-D); also derives
-  velocity and visibility. **Pure.**
+- **Features** — landmarks → **interior hip–knee–ankle angle from 2D coordinates,
+  preferring world-landmark `x/y` (z ignored, ADR-0007-A)**, computed **per leg**, using
+  the higher-visibility leg or the average when both agree (ADR-0007-B); **EMA-smoothed
+  with large-movement passthrough** (ADR-0007-D); also derives visibility. **Pure.**
 - **Count** — smoothed angle + hysteresis FSM → rep count + rep-state + partial flag
   (ADR-0001, ADR-0003). **Pauses on dropout, resumes without reset** (ADR-0007-C). **Pure,
   fully testable headless.** This is where tests live.
@@ -42,3 +42,11 @@ Seed fixtures from recorded team sessions plus public datasets: InfiniteRep, Kag
 Workout, EJUST-SQUAT-21, Penn Action, Dill et al. squats corpus (MoCap-labelled angles).
 Record our own labelled sessions (planned). Low-light / loose-clothing remain empirical
 test gaps (literature gives no quantified numbers yet).
+
+## Open calibration tasks (heuristics in `Features`)
+
+The `Features` tunables — EMA `alpha`, `jitter_threshold`, visibility thresholds
+(`min_landmark_visibility` / `confident_visibility`, kept aligned with `RepCounter`'s
+pause gate), and the leg-averaging agreement / leg-switch margins — are **empirically-tuned
+heuristics**, not literature-derived. Calibrate them against MoCap-labelled squats (Dill
+et al., research §5.2) and the team's recorded sessions before claiming viewpoint-robustness.

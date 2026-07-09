@@ -22,6 +22,7 @@ class Landmark:
 class PoseFrame:
     landmarks: dict[int, Landmark]
     timestamp: float
+    world_landmarks: dict[int, Landmark] | None = None
 
 
 @dataclass
