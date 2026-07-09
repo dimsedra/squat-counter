@@ -8,7 +8,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import cv2
@@ -24,7 +23,10 @@ MODEL = Path(__file__).resolve().parent.parent / "models" / "pose_landmarker_ful
 
 def _make_capture(source: str) -> WebcamCapture | VideoFileCapture:
     if Path(source).exists():
-        return VideoFileCapture(source)
+        try:
+            return VideoFileCapture(source)
+        except ValueError as exc:
+            raise SystemExit(str(exc))
     try:
         cam_id = int(source)
     except ValueError:
@@ -41,44 +43,42 @@ def main() -> None:
     if not Path(args.model).exists():
         raise SystemExit(f"Model not found: {args.model}\nRun: python scripts/fetch_model.py")
 
-    cap = _make_capture(args.source)
-    det = PoseLandmarkerDetector(args.model)
-    fe = FeatureExtractor()
-    counter = RepCounter()
-
     window = "Squat Rep Counter"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
 
-    try:
-        for frame in cap:
-            pose = det.detect(frame.image, timestamp=frame.timestamp)
-            landmarks = (
-                {k: (v.x, v.y) for k, v in pose.landmarks.items()}
-                if pose else None
-            )
+    with _make_capture(args.source) as cap, PoseLandmarkerDetector(args.model) as det:
+        fe = FeatureExtractor()
+        counter = RepCounter()
 
-            if pose is None:
-                vis = draw_overlay(
-                    frame.image, counter.rep_count, None,
-                    counter.partial, counter.paused,
-                    lost_track=True, landmarks=None,
-                )
-            else:
-                feat = fe.update(pose)
-                step = counter.update(feat.angle, visibility=feat.visibility)
-                vis = draw_overlay(
-                    frame.image, step.rep_count, step.state,
-                    step.partial, step.paused,
-                    lost_track=False, landmarks=landmarks,
+        try:
+            for frame in cap:
+                pose = det.detect(frame.image, timestamp=frame.timestamp)
+                landmarks = (
+                    {k: (v.x, v.y) for k, v in pose.landmarks.items()}
+                    if pose else None
                 )
 
-            cv2.imshow(window, vis)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-    except KeyboardInterrupt:
-        pass
-    finally:
-        cap.release()
+                if pose is None:
+                    vis = draw_overlay(
+                        frame.image, counter.rep_count, None,
+                        counter.partial, counter.paused,
+                        lost_track=True, landmarks=None,
+                    )
+                else:
+                    feat = fe.update(pose)
+                    step = counter.update(feat.angle, visibility=feat.visibility)
+                    vis = draw_overlay(
+                        frame.image, step.rep_count, step.state,
+                        step.partial, step.paused,
+                        lost_track=False, landmarks=landmarks,
+                    )
+
+                cv2.imshow(window, vis)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+        except KeyboardInterrupt:
+            pass
+
         cv2.destroyAllWindows()
 
 

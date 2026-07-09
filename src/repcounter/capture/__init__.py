@@ -9,6 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Protocol, Self, runtime_checkable
 
+# time.monotonic() is used for frame timestamps (not system clock) so that NTP
+# adjustments or clock jumps cannot produce non-monotonic timestamps (M3).
+
 import cv2
 import numpy as np
 
@@ -37,18 +40,13 @@ class WebcamCapture:
             ok, bgr = self._cap.read()
             if not ok:
                 break
-            yield Frame(image=bgr, timestamp=time.time())
+            yield Frame(image=bgr, timestamp=time.monotonic())
 
     def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: object) -> None:
         self.release()
-
-    @property
-    def preview_fps(self) -> float:
-        actual = self._cap.get(cv2.CAP_PROP_FPS)
-        return actual if actual > 0 else 30.0
 
     def release(self) -> None:
         self._cap.release()
@@ -58,13 +56,15 @@ class VideoFileCapture:
     def __init__(self, path: str | Path) -> None:
         self._path = str(path)
         self._cap = cv2.VideoCapture(self._path)
+        if not self._cap.isOpened():
+            raise ValueError(f"cannot open video file: {self._path}")
 
     def __iter__(self) -> Iterator[Frame]:
         while True:
             ok, bgr = self._cap.read()
             if not ok:
                 break
-            yield Frame(image=bgr, timestamp=time.time())
+            yield Frame(image=bgr, timestamp=time.monotonic())
 
     def __enter__(self) -> Self:
         return self

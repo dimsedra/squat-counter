@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Self
 
 import mediapipe as mp
 import numpy as np
@@ -30,6 +31,15 @@ class PoseLandmarkerDetector:
             num_poses=num_poses,
         )
         self._detector = _MP_VISION.PoseLandmarker.create_from_options(options)
+
+    def release(self) -> None:
+        self._detector.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.release()
 
     @staticmethod
     def _to_pose_frame(result, timestamp: float = 0.0) -> PoseFrame | None:

@@ -25,19 +25,20 @@ def extract(
     step: int = 1,
     ground_truth: int | None = None,
 ) -> None:
+    if step < 1:
+        raise ValueError(f"--step must be >= 1, got {step}")
+
     video_path = Path(video_path)
     if not video_path.exists():
         raise FileNotFoundError(f"{video_path} not found")
 
-    CLIP_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Remove old frames
-    for old in CLIP_DIR.glob("*.png"):
-        old.unlink()
-
     cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise ValueError(f"cannot open video file: {video_path}")
+
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
+    total_to_save = (frame_count + step - 1) // step if frame_count > 0 else 0
 
     saved = 0
     idx = 0
@@ -46,11 +47,30 @@ def extract(
         if not ok:
             break
         if idx % step == 0:
-            out_path = CLIP_DIR / f"frame_{idx:06d}.png"
-            cv2.imwrite(str(out_path), bgr)
             saved += 1
         idx += 1
 
+    cap.release()
+
+    if saved == 0:
+        raise ValueError("no frames extracted — check the source video is not empty")
+
+    # Remove old frames only after confirming new extraction will succeed
+    CLIP_DIR.mkdir(parents=True, exist_ok=True)
+    for old in CLIP_DIR.glob("*.png"):
+        old.unlink()
+
+    # Second pass: write frames
+    cap = cv2.VideoCapture(str(video_path))
+    idx = 0
+    while True:
+        ok, bgr = cap.read()
+        if not ok:
+            break
+        if idx % step == 0:
+            out_path = CLIP_DIR / f"frame_{idx:06d}.png"
+            cv2.imwrite(str(out_path), bgr)
+        idx += 1
     cap.release()
 
     manifest = {
@@ -76,6 +96,10 @@ def main() -> None:
     parser.add_argument("--ground-truth", type=int, default=None, help="Known rep count (optional)")
     parser.add_argument("--step", type=int, default=1, help="Extract every N-th frame (default: 1)")
     args = parser.parse_args()
+
+    if args.step < 1:
+        raise SystemExit(f"--step must be >= 1, got {args.step}")
+
     extract(args.video, step=args.step, ground_truth=args.ground_truth)
 
 

@@ -2,7 +2,6 @@
 """
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import cv2
@@ -15,11 +14,10 @@ from repcounter.capture import Frame, VideoFileCapture, WebcamCapture
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
-def _mock_cap(read_returns: list[tuple[bool, object]]) -> MagicMock:
-    """Build a ``cv2.VideoCapture`` mock that returns *read_returns* in order,
-    then (False, None)."""
+def _mock_cap(read_returns: list[tuple[bool, object]], is_opened: bool = True) -> MagicMock:
     cap = MagicMock()
     cap.read.side_effect = read_returns + [(False, None)]
+    cap.isOpened.return_value = is_opened
     cap.get.return_value = 30.0
     return cap
 
@@ -43,7 +41,7 @@ def test_webcam_capture_yields_frames():
 
 
 def test_webcam_capture_stops_when_read_fails():
-    cap = _mock_cap([])  # immediately fails
+    cap = _mock_cap([])
     with patch("cv2.VideoCapture", return_value=cap):
         frames = list(WebcamCapture(0))
     assert frames == []
@@ -65,20 +63,15 @@ def test_webcam_capture_sets_resolution():
     cap.set.assert_any_call(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
 
-def test_webcam_capture_preview_fps():
-    cap = _mock_cap([])
-    cap.get.return_value = 15.0
+def test_webcam_capture_timestamps_monotonic():
+    cap = _mock_cap(
+        [(True, _DUMMY_BGR), (True, _DUMMY_BGR), (True, _DUMMY_BGR)]
+    )
     with patch("cv2.VideoCapture", return_value=cap):
-        wc = WebcamCapture(0)
-    assert wc.preview_fps == 15.0
-
-
-def test_webcam_capture_preview_fps_fallback():
-    cap = _mock_cap([])
-    cap.get.return_value = 0.0  # camera didn't report fps
-    with patch("cv2.VideoCapture", return_value=cap):
-        wc = WebcamCapture(0)
-    assert wc.preview_fps == 30.0
+        with patch("time.monotonic", side_effect=[1.0, 2.0, 3.0]):
+            frames = list(WebcamCapture(0))
+    timestamps = [f.timestamp for f in frames]
+    assert all(t2 >= t1 for t1, t2 in zip(timestamps, timestamps[1:]))
 
 
 # --------------------------------------------------------------------------- #
@@ -121,6 +114,24 @@ def test_video_file_capture_fps():
     with patch("cv2.VideoCapture", return_value=cap):
         vf = VideoFileCapture("dummy.mp4")
     assert vf.fps == 29.97
+
+
+def test_video_file_capture_unreadable_raises():
+    cap = _mock_cap([], is_opened=False)
+    with patch("cv2.VideoCapture", return_value=cap):
+        with pytest.raises(ValueError, match="cannot open video file"):
+            VideoFileCapture("bad.mp4")
+
+
+def test_video_file_capture_timestamps_monotonic():
+    cap = _mock_cap(
+        [(True, _DUMMY_BGR), (True, _DUMMY_BGR), (True, _DUMMY_BGR)]
+    )
+    with patch("cv2.VideoCapture", return_value=cap):
+        with patch("time.monotonic", side_effect=[10.0, 10.5, 11.0]):
+            frames = list(VideoFileCapture("dummy.mp4"))
+    timestamps = [f.timestamp for f in frames]
+    assert all(t2 >= t1 for t1, t2 in zip(timestamps, timestamps[1:]))
 
 
 # --------------------------------------------------------------------------- #
