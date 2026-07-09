@@ -109,8 +109,9 @@ class RepCounter:
             uncalibrated=self.uncalibrated,
         )
 
-    def update(self, angle: float, visibility: float = 1.0) -> CountStep:
+    def update(self, angle: float | None, visibility: float = 1.0) -> CountStep:
         if not self._angle_valid(angle):
+            self._paused = True
             return self._frozen_step(paused=True)
         if not self._ensure_calibrated(angle, visibility):
             return CountStep(
