@@ -2,6 +2,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import threading
 from pathlib import Path
@@ -114,9 +115,14 @@ async def video_stream(session_id: str):
     async def generate():
         while state.running or not state.frame_queue.empty():
             try:
-                jpg = state.frame_queue.get(timeout=0.1)
+                jpg = await asyncio.wait_for(
+                    asyncio.to_thread(state.frame_queue.get),
+                    timeout=0.5,
+                )
                 yield (b"--frame\r\n"
                        b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n")
+            except asyncio.TimeoutError:
+                continue
             except Exception:
                 if not state.running and state.frame_queue.empty():
                     break
@@ -150,7 +156,20 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     try:
         while state.running or not state.data_queue.empty():
             try:
-                data: FrameData = state.data_queue.get(timeout=0.1)
+                data = await asyncio.wait_for(
+                    asyncio.to_thread(state.data_queue.get),
+                    timeout=0.5,
+                )
+                if data.complete:
+                    s = state.session
+                    reps = s.summary().get("reps", 0) if s else 0
+                    dur = s.summary().get("duration_sec", 0) if s else 0
+                    await ws.send_json({
+                        "complete": True,
+                        "rep_count": reps,
+                        "duration_sec": dur,
+                    })
+                    break
                 await ws.send_json({
                     "t": data.timestamp,
                     "angle": data.angle,
@@ -165,20 +184,11 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 })
             except WebSocketDisconnect:
                 raise
+            except asyncio.TimeoutError:
+                continue
             except Exception:
                 if not state.running and state.data_queue.empty():
                     break
-
-        # Signal completion (video file finished processing)
-        if state.completed:
-            s = state.session
-            reps = s.summary().get("reps", 0) if s else 0
-            dur = s.summary().get("duration_sec", 0) if s else 0
-            await ws.send_json({
-                "complete": True,
-                "rep_count": reps,
-                "duration_sec": dur,
-            })
     except WebSocketDisconnect:
         pass
 
@@ -198,7 +208,6 @@ async def stop_session(session_id: str):
 
 @router.get("/session/{session_id}/download")
 async def download_session(session_id: str, fmt: str = "csv"):
-    # Try in-memory state first, then fall back to disk
     d = None
     state = _sessions.get(session_id)
     if state and state.session:

@@ -41,6 +41,7 @@ class FrameData:
     lost_track: bool = False
     uncalibrated: bool = False
     fps: float = 0.0
+    complete: bool = False
 
 
 @dataclass
@@ -181,6 +182,7 @@ def run_pipeline(
                 timestamp=time.monotonic(),
                 fps=0.0,
                 rep_count=counter.rep_count,
+                complete=True,
             )
             state.data_queue.put(data_sentinel)
 
