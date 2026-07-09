@@ -53,6 +53,7 @@ button:hover{background:#2ea043}
 .badge{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:.2rem .5rem;border-radius:4px;background:#d29922;color:#0d1117}
 .badge-danger{background:#da3633;color:#fff}
 .badge-warning{background:#d29922;color:#0d1117}
+.badge-ok{background:#238636;color:#fff}
 .hidden{display:none}
 .session-controls{margin-top:auto;display:flex;flex-direction:column;gap:.5rem}
 .session-table{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -65,12 +66,21 @@ button:hover{background:#2ea043}
 """
 
 _WS_JS = """\
-const SID=\"{sid}\";let ws=null;
+const SID=\"{sid}";let ws=null,complete=false;
 function cws(){
+  if(complete)return;
   const p=location.protocol==='https:'?'wss:':'ws:';
   ws=new WebSocket(p+'//'+location.host+'/ws/'+SID);
   ws.onmessage=function(e){
     var d=JSON.parse(e.data);
+    if(d.complete){
+      complete=true;ws.close();
+      document.getElementById('rc').textContent=d.rep_count;
+      document.getElementById('bb').classList.remove('hidden');
+      document.getElementById('btn-stop').style.display='none';
+      done(d);
+      return;
+    }
     document.getElementById('rc').textContent=d.rep_count;
     document.getElementById('ag').textContent=d.angle!=null?d.angle.toFixed(1)+'\\u00b0':'\\u2014';
     document.getElementById('st').textContent=d.rep_state||'\\u2014';
@@ -79,8 +89,14 @@ function cws(){
     tb('bp',d.paused);tb('bpr',d.partial);tb('bl',d.lost_track);tb('bu',d.uncalibrated);
   };
   ws.onclose=function(){
-    if(document.getElementById('vs'))setTimeout(cws,2000);
+    if(!complete&&document.getElementById('vs'))setTimeout(cws,2000);
   };
+}
+function done(d){
+  document.getElementById('dl').href='/session/'+SID+'/download?format=csv';
+  document.getElementById('dl').style.display='inline-block';
+  document.getElementById('btn-stop').disabled=true;
+  document.getElementById('btn-stop').textContent='\u2713 Saved';
 }
 function tb(id,show){
   var e=document.getElementById(id);
@@ -90,12 +106,9 @@ async function stopSess(){
   var r=await fetch('/session/'+SID+'/stop',{method:'POST'});
   var d=await r.json();
   if(ws)ws.close();
-  if(d.dir){
-    document.getElementById('dl').href='/session/'+SID+'/download?format=csv';
-    document.getElementById('dl').style.display='inline-block';
-  }
+  if(d.dir)done(d);
   document.getElementById('btn-stop').disabled=true;
-  document.getElementById('btn-stop').textContent='\\u2713 Saved';
+  document.getElementById('btn-stop').textContent='\u2713 Saved';
 }
 cws();
 """
@@ -173,7 +186,8 @@ def render_watch(session_id: str, source: str) -> HTMLResponse:
         '<span id="bp" class="badge hidden">PAUSED</span>'
         '<span id="bpr" class="badge hidden">PARTIAL</span>'
         '<span id="bl" class="badge badge-danger hidden">LOST TRACK</span>'
-        '<span id="bu" class="badge badge-warning hidden">UNCALIBRATED</span></div>'
+        '<span id="bu" class="badge badge-warning hidden">UNCALIBRATED</span>'
+        '<span id="bb" class="badge badge-ok hidden">COMPLETE</span></div>'
         '<div class="session-controls">'
         '<button id="btn-stop" class="btn-danger" onclick="stopSess()">Stop &amp; Save</button>'
         '<a id="dl" href="#" style="display:none" class="btn">'

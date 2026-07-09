@@ -66,4 +66,4 @@ async def test_download_nonexistent_session(client):
     resp = await client.get("/session/does_not_exist/download")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["error"] == "session not found or not recorded"
+    assert data["error"] == "session not found"

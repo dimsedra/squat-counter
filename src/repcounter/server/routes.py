@@ -11,7 +11,6 @@ from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from starlette.requests import Request
 
 from repcounter.capture import VideoFileCapture, WebcamCapture
-from repcounter.detect import PoseLandmarkerDetector
 from repcounter.server.pipeline import FrameData, PipelineState, run_pipeline
 from repcounter.server.session import SessionRecorder, SESSIONS_DIR
 from repcounter.server.templates import render_index, render_sessions, render_watch
@@ -101,6 +100,7 @@ async def upload_video(file: UploadFile = File(...), label: str = ""):
     cap = VideoFileCapture(str(dst))
     rec = SessionRecorder(label=label or file.filename, source="upload")
     session_id, state = _start_pipeline(cap, session=rec)
+    state.upload_path = str(dst)
     _sessions[session_id] = state
     return {"session_id": session_id}
 
@@ -153,6 +153,21 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             except Exception:
                 if not state.running and state.data_queue.empty():
                     break
+
+        # Signal completion (video file finished processing)
+        if state.completed:
+            s = state.session
+            reps = 0
+            dur = 0
+            if s:
+                sm = s.summary()
+                reps = sm.get("reps", 0)
+                dur = sm.get("frames", 0) / (sm.get("fps", 30) or 30)
+            await ws.send_json({
+                "complete": True,
+                "rep_count": reps,
+                "duration_sec": round(dur, 1),
+            })
     except WebSocketDisconnect:
         pass
 
@@ -163,6 +178,7 @@ async def stop_session(session_id: str):
     if not state:
         return {"error": "session not found"}
     state.running = False
+    out_dir = None
     if state.session:
         out_dir = state.session.stop()
         return {"dir": str(out_dir), "summary": state.session.summary()}
@@ -171,10 +187,18 @@ async def stop_session(session_id: str):
 
 @router.get("/session/{session_id}/download")
 async def download_session(session_id: str, fmt: str = "csv"):
+    # Try in-memory state first, then fall back to disk
+    d = None
     state = _sessions.get(session_id)
-    if not state or not state.session:
-        return {"error": "session not found or not recorded"}
-    d = state.session.dir
+    if state and state.session:
+        d = state.session.dir
+    else:
+        candidate = SESSIONS_DIR / session_id
+        if candidate.exists():
+            d = candidate
+    if not d:
+        return {"error": "session not found"}
+
     if fmt == "json":
         p = d / "summary.json"
     else:

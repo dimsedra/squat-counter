@@ -2,12 +2,15 @@
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
-from repcounter.server.session import FrameRecord, RepEventRecord, SessionRecorder
+from repcounter.server.session import SessionRecorder
 from repcounter.types import CountStep, RepEvent, RepState
 
 
@@ -21,34 +24,50 @@ def test_start_creates_directory():
     rec = SessionRecorder(label="test_session")
     rec.start()
     assert rec.dir.exists()
-    rec.dir.rmdir()  # cleanup
+    rec.stop()  # closes CSV file handles
+    shutil.rmtree(rec.dir)
 
 
 def test_append_frame():
     rec = SessionRecorder()
+    rec.start()
     step = CountStep(state=RepState.DESCENDING, rep_count=1, rep_event=None, partial=False, paused=False)
     rec.append_frame(0, 1.0, angle=150.0, visibility=0.9, step=step)
-    assert len(rec._frames) == 1
-    fr = rec._frames[0]
-    assert fr.frame_idx == 0
-    assert fr.angle == 150.0
-    assert fr.rep_state == "descending"
+    out_dir = rec.stop()
+
+    rows = list(csv.DictReader((out_dir / "frames.csv").read_text().splitlines()))
+    assert len(rows) == 1
+    assert rows[0]["frame_idx"] == "0"
+    assert rows[0]["angle"] == "150.0"
+    assert rows[0]["rep_state"] == "descending"
+    shutil.rmtree(out_dir)
 
 
 def test_append_frame_without_step():
     rec = SessionRecorder()
+    rec.start()
     rec.append_frame(5, 2.0, angle=None, visibility=0.0)
-    assert rec._frames[0].rep_count == 0
-    assert rec._frames[0].paused is False
+    out_dir = rec.stop()
+
+    rows = list(csv.DictReader((out_dir / "frames.csv").read_text().splitlines()))
+    assert len(rows) == 1
+    assert rows[0]["rep_count"] == "0"
+    assert rows[0]["paused"] == "False"
+    shutil.rmtree(out_dir)
 
 
 def test_append_rep_event():
     rec = SessionRecorder()
+    rec.start()
     event = RepEvent(rep_index=1, depth_angle=87.3, is_full=True)
     rec.append_rep_event(event, 12.5)
-    assert len(rec._events) == 1
-    assert rec._events[0].rep_index == 1
-    assert rec._events[0].depth_angle == 87.3
+    out_dir = rec.stop()
+
+    rows = list(csv.DictReader((out_dir / "events.csv").read_text().splitlines()))
+    assert len(rows) == 1
+    assert rows[0]["rep_index"] == "1"
+    assert rows[0]["depth_angle"] == "87.3"
+    shutil.rmtree(out_dir)
 
 
 def test_stop_flushes_files():
@@ -85,8 +104,6 @@ def test_stop_flushes_files():
     assert "rep_index,timestamp,depth_angle" in events_csv
     assert "1,1.0,90.0,True" in events_csv
 
-    # cleanup
-    import shutil
     shutil.rmtree(out_dir)
 
 
@@ -98,5 +115,4 @@ def test_empty_session_has_zero_reps():
     assert summary["total_reps"] == 0
     assert summary["full_reps"] == 0
     assert summary["total_frames"] == 0
-    import shutil
     shutil.rmtree(out_dir)
