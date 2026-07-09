@@ -7,7 +7,7 @@ name = "repcounter"
 version = "0.1.0"
 description = "Real-time squat repetition counter (MediaPipe Tasks Vision PoseLandmarker)"
 requires-python = ">=3.10"
-dependencies = ["opencv-python", "mediapipe"]
+dependencies = ["opencv-python", "mediapipe", "fastapi", "uvicorn[standard]", "python-multipart"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

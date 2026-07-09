@@ -18,6 +18,8 @@ env/
 
 # Local data / recordings (add fixtures explicitly if needed)
 data/
+sessions/
+uploads/
 
 # Downloaded model + generated test fixtures (fetched via scripts/)
 models/
