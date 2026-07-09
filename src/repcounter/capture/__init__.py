@@ -57,54 +57,49 @@ class WebcamCapture:
 
 
 class VideoFileCapture:
-    """Yields frames from a video file, with a per-frame decode timeout.
+    """Yields frames from a video file.
 
     Some codecs (HEVC, certain iPhone recordings) can cause OpenCV's
-    ``read()`` to block indefinitely on Windows. A background thread with a
-    timeout ensures the pipeline never hangs.
+    ``read()`` to block indefinitely on Windows. For those, pass
+    ``read_timeout`` to enable a per-frame watchdog that aborts the
+    read after *read_timeout* seconds. By default (None), reads are
+    direct and blocking.
     """
-
-    _READ_TIMEOUT: float = 5.0
 
     def __init__(self, path: str | Path, *, read_timeout: float | None = None) -> None:
         self._path = str(path)
         self._cap = cv2.VideoCapture(self._path)
         if not self._cap.isOpened():
             raise ValueError(f"cannot open video file: {self._path}")
-        if read_timeout is not None:
-            self._READ_TIMEOUT = read_timeout
+        self._read_timeout = read_timeout
 
     def __iter__(self) -> Iterator[Frame]:
         while True:
-            ok, bgr = self._read_or_timeout()
+            ok, bgr = self._read()
             if not ok:
                 break
             yield Frame(image=bgr, timestamp=time.monotonic())
 
-    def _read_or_timeout(self) -> tuple[bool, np.ndarray | None]:
-        """Call ``self._cap.read()`` on a separate thread with a timeout.
+    def _read(self) -> tuple[bool, np.ndarray | None]:
+        """Read one frame. If ``read_timeout`` is set, a watchdog thread
+        aborts the read after the timeout."""
+        if self._read_timeout is None:
+            return self._cap.read()
 
-        Returns ``(True, frame)`` on success, ``(False, None)`` on EOF or
-        when the underlying ``read()`` blocks longer than ``_READ_TIMEOUT``
-        seconds (indicating a corrupt or unsupported frame).
-        """
         q: queue.Queue = queue.Queue()
 
-        def _read() -> None:
+        def _do_read() -> None:
             try:
                 ok, bgr = self._cap.read()
                 q.put((ok, bgr))
-            except Exception as exc:
+            except Exception:
                 q.put((False, None))
 
-        t = threading.Thread(target=_read, daemon=True)
+        t = threading.Thread(target=_do_read, daemon=True)
         t.start()
-        t.join(self._READ_TIMEOUT)
-
+        t.join(self._read_timeout)
         if t.is_alive():
-            # Decode hung — abandon this and subsequent frames.
             return False, None
-
         return q.get_nowait()
 
     def __enter__(self) -> Self:

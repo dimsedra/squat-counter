@@ -158,7 +158,7 @@ def run_pipeline(
             if t_enqueue > 0.5:
                 _log(f"[{session_id}] frame {fc}: blocked on enqueue for {t_enqueue:.1f}s")
 
-            if fc <= 3 or fc % 30 == 0:
+            if fc <= 3 or fc % 100 == 0:
                 _log(f"[{session_id}] frame {fc} done ({t_detect:.2f}s detect)")
 
             if session:
@@ -193,9 +193,13 @@ def run_pipeline(
         _log(f"[{session_id}] ERROR: {exc}")
     finally:
         state.running = False
+        # Drain the frame queue to make room for the sentinel.
+        while not state.frame_queue.empty():
+            try:
+                state.frame_queue.get_nowait()
+            except Exception:
+                break
         # Push sentinels so blocking get() in async handlers can exit.
-        # Always sentinel — regardless of completion/error — to unblock
-        # webcam and uploaded-video handlers alike.
         state.frame_queue.put(None)
         state.data_queue.put(FrameData(
             timestamp=0, fps=0.0, complete=True,
