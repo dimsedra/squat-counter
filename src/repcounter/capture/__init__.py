@@ -4,6 +4,8 @@ WebcamCapture and VideoFileCapture both implement the ``Capture`` Protocol.
 """
 from __future__ import annotations
 
+import queue
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,18 +57,55 @@ class WebcamCapture:
 
 
 class VideoFileCapture:
-    def __init__(self, path: str | Path) -> None:
+    """Yields frames from a video file, with a per-frame decode timeout.
+
+    Some codecs (HEVC, certain iPhone recordings) can cause OpenCV's
+    ``read()`` to block indefinitely on Windows. A background thread with a
+    timeout ensures the pipeline never hangs.
+    """
+
+    _READ_TIMEOUT: float = 5.0
+
+    def __init__(self, path: str | Path, *, read_timeout: float | None = None) -> None:
         self._path = str(path)
         self._cap = cv2.VideoCapture(self._path)
         if not self._cap.isOpened():
             raise ValueError(f"cannot open video file: {self._path}")
+        if read_timeout is not None:
+            self._READ_TIMEOUT = read_timeout
 
     def __iter__(self) -> Iterator[Frame]:
         while True:
-            ok, bgr = self._cap.read()
+            ok, bgr = self._read_or_timeout()
             if not ok:
                 break
             yield Frame(image=bgr, timestamp=time.monotonic())
+
+    def _read_or_timeout(self) -> tuple[bool, np.ndarray | None]:
+        """Call ``self._cap.read()`` on a separate thread with a timeout.
+
+        Returns ``(True, frame)`` on success, ``(False, None)`` on EOF or
+        when the underlying ``read()`` blocks longer than ``_READ_TIMEOUT``
+        seconds (indicating a corrupt or unsupported frame).
+        """
+        q: queue.Queue = queue.Queue()
+
+        def _read() -> None:
+            try:
+                ok, bgr = self._cap.read()
+                q.put((ok, bgr))
+            except Exception as exc:
+                q.put((False, None))
+
+        t = threading.Thread(target=_read, daemon=True)
+        t.start()
+        t.join(self._READ_TIMEOUT)
+
+        if t.is_alive():
+            # Decode hung — abandon this and subsequent frames.
+            return False, None
+
+        return q.get_nowait()
 
     def __enter__(self) -> Self:
         return self
