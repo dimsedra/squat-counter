@@ -102,6 +102,8 @@ def run_pipeline(
             if first_frame:
                 _log(f"[{session_id}] first frame received ({frame.image.shape}), processing ...")
                 first_frame = False
+            elif fc == 4:
+                _log(f"[{session_id}] frame 4 received, processing ...")
 
             t_start = time.monotonic()
             pose = det.detect(frame.image, timestamp=frame.timestamp)
@@ -160,18 +162,21 @@ def run_pipeline(
                 _log(f"[{session_id}] frame {fc} done ({t_detect:.2f}s detect)")
 
             if session:
-                session.append_frame(
-                    state.frame_count, frame.timestamp,
-                    angle=data.angle, visibility=data.visibility,
-                    step=CountStep(
-                        state=counter.state,
-                        rep_count=counter.rep_count,
-                        rep_event=None,
-                        partial=counter.partial,
-                        paused=counter.paused,
-                        uncalibrated=counter.uncalibrated,
-                    ) if pose else None,
-                )
+                try:
+                    session.append_frame(
+                        state.frame_count, frame.timestamp,
+                        angle=data.angle, visibility=data.visibility,
+                        step=CountStep(
+                            state=counter.state,
+                            rep_count=counter.rep_count,
+                            rep_event=None,
+                            partial=counter.partial,
+                            paused=counter.paused,
+                            uncalibrated=counter.uncalibrated,
+                        ) if pose else None,
+                    )
+                except Exception as exc:
+                    _log(f"[{session_id}] append_frame error: {exc}")
 
         # ── File playback ended — auto-finalise ──────────────────────────
         if is_file and session:
