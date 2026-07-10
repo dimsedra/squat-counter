@@ -30,3 +30,8 @@ tests/fixtures/_*
 
 # Self-hosted MediaPipe web assets (fetched via scripts/fetch_web_assets.py)
 src/repcounter/server/static/vision/
+
+# Personal agent tooling (not part of the project)
+.agents/
+AGENTS.md
+skills-lock.json
