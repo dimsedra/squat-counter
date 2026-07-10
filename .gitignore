@@ -20,6 +20,7 @@ env/
 data/
 sessions/
 uploads/
+videos/
 
 # Downloaded model + generated test fixtures (fetched via scripts/)
 models/

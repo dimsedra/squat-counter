@@ -71,6 +71,50 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) to start counting.
 
 ---
 
+## Batch processing (many videos → one CSV)
+
+Process a whole folder of videos headless (no window, no streaming) into a
+single analysis-ready CSV — **one summary row per video**:
+
+```powershell
+# Simplest: drop videos into the videos/ folder, then just run:
+python scripts/batch.py                       # scans videos/ -> dataset.csv
+python scripts/batch.py --workers 4           # same, in parallel
+python scripts/batch.py --recursive --workers 4   # include subfolders
+
+# Or point anywhere explicitly (overrides the default folder):
+python scripts/batch.py --dir D:\dataset\squats --recursive --out dataset.csv --workers 4
+python scripts/batch.py a.mp4 b.mp4 c.mp4 --out dataset.csv
+```
+
+With no arguments the tool scans the conventional `videos/` folder (created on
+first run) and writes `dataset.csv`. `--dir`, globs, and explicit file lists
+override it.
+
+Options: `--workers N` (parallel processes, ~N× faster), `--per-video` (also
+write raw `frames.csv`/`events.csv` per video), `--standing-angle X` (override
+auto-calibration), `--recursive`.
+
+Output columns (`video` + `path` are stable join keys for pairing with an
+external label sheet):
+
+```
+video, path, status, frames, pose_frames, duration_sec, fps,
+calibration_angle, total_reps, full_reps, partial_reps, paused_frames,
+mean_depth_angle, min_depth_angle, error
+```
+
+`status` is one of `ok` / `uncalibrated` / `no_pose` / `error`, so rows that did
+not calibrate, detected no pose, or failed to decode are flagged explicitly
+(never a silent `0` reps). Filter to `status == ok` before computing accuracy.
+
+`full_reps` = credited reps that went **below parallel** (`< ~90°`);
+`partial_reps` = `total_reps − full_reps` (credited reps that reached parallel but
+not below it). See `docs/adr/0009-batch-output-schema.md` for the full column
+contract and the `status` state machine.
+
+---
+
 ## Web Dashboard
 
 | Page | Endpoint | Description |
@@ -102,6 +146,7 @@ Each session produces:
 | Script | Description |
 |---|---|
 | `scripts/run.py` | Desktop app (OpenCV window) — webcam or video file |
+| `scripts/batch.py` | Headless batch: many videos → one summary CSV (one row/video) |
 | `scripts/serve.py` | Web dashboard (FastAPI + uvicorn) |
 | `scripts/install.py` | One-shot installer — venv, deps, model download (idempotent) |
 | `scripts/fetch_model.py` | Download `pose_landmarker_full.task` |
