@@ -113,6 +113,10 @@ not calibrate, detected no pose, or failed to decode are flagged explicitly
 not below it). See `docs/adr/0009-batch-output-schema.md` for the full column
 contract and the `status` state machine.
 
+**Data-collection protocol (Bahasa Indonesia):** the recording protocol, condition
+list, filename convention, and a ready-to-fill label sheet live in
+`docs/experiment/protokol.md` and `docs/experiment/label_template.csv`.
+
 ---
 
 ## Web Dashboard
