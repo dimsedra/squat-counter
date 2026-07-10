@@ -11,8 +11,11 @@ analysis.
 
 ## Features
 
-- **Real-time webcam counting** — stream MJPEG + WebSocket data to browser dashboard
-- **Offline video processing** — upload a recorded video and get session data
+- **Real-time webcam counting** — pose runs in the browser (MediaPipe JS); the server
+  counts from landmarks over a WebSocket. Native camera permission prompt + device
+  picker (works with DroidCam/OBS virtual cams). See ADR-0008.
+- **Offline video processing** — upload a recorded video, decoded and processed
+  server-side, and get session data
 - **Research audit trail** — every session saves `frames.csv` (per-frame angle/visibility/state),
   `reps.csv` (rep events), and `summary.json`
 - **Robust to real-world conditions** — hysteresis gating prevents double-counting,
@@ -31,13 +34,17 @@ irm https://astral.sh/uv/install.ps1 | iex
 uv venv
 uv pip install -r requirements.txt
 uv run python scripts/fetch_model.py
+uv run python scripts/fetch_web_assets.py
 ```
 
 Or as a single line:
 
 ```powershell
-cd mediapipe-repcounter; irm https://astral.sh/uv/install.ps1 | iex; uv venv; uv pip install -r requirements.txt; uv run python scripts/fetch_model.py
+cd mediapipe-repcounter; irm https://astral.sh/uv/install.ps1 | iex; uv venv; uv pip install -r requirements.txt; uv run python scripts/fetch_model.py; uv run python scripts/fetch_web_assets.py
 ```
+
+> `fetch_web_assets.py` self-hosts the MediaPipe JS/WASM runtime used by the live-webcam
+> page (browser-side pose). `scripts/install.py` runs this step automatically.
 
 ### If you already have Python
 
@@ -69,7 +76,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) to start counting.
 | Page | Endpoint | Description |
 |---|---|---|
 | Home | `/` | Start webcam or upload video |
-| Live watch | `/watch?source=webcam` | MJPEG stream + real-time rep/angle/state |
+| Live watch | `/watch?source=webcam` | Browser-side pose + real-time rep/angle/state |
 | Session watch | `/watch?session=<id>` | Watch a recorded session in progress |
 | Sessions | `/sessions` | Browse/download past sessions |
 
@@ -98,6 +105,7 @@ Each session produces:
 | `scripts/serve.py` | Web dashboard (FastAPI + uvicorn) |
 | `scripts/install.py` | One-shot installer — venv, deps, model download (idempotent) |
 | `scripts/fetch_model.py` | Download `pose_landmarker_full.task` |
+| `scripts/fetch_web_assets.py` | Self-host MediaPipe JS/WASM for the live-webcam page |
 | `scripts/fetch_test_clip.py` | Download test fixture video |
 | `scripts/extract_frames.py` | Extract frames from a video file |
 

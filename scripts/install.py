@@ -17,6 +17,7 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parent.parent
 REQUIREMENTS = PROJECT / "requirements.txt"
 MODEL_SCRIPT = PROJECT / "scripts" / "fetch_model.py"
+WEB_ASSETS_SCRIPT = PROJECT / "scripts" / "fetch_web_assets.py"
 VENV_DIR = PROJECT / ".venv"
 
 
@@ -158,6 +159,28 @@ def _download_model() -> None:
         sys.exit(1)
 
 
+# ── Step: download web assets (MediaPipe JS/WASM, self-hosted) ─────────────
+
+WEB_ASSET_MARKER = (
+    PROJECT / "src" / "repcounter" / "server" / "static" / "vision" / "vision_bundle.mjs"
+)
+
+
+def _download_web_assets() -> None:
+    if WEB_ASSET_MARKER.exists():
+        _skip("web assets already downloaded")
+        return
+    _info("downloading MediaPipe web assets (JS + WASM, ~22 MB) ...")
+    if _has_uv():
+        ok = _run("uv", "run", "python", str(WEB_ASSETS_SCRIPT))
+    else:
+        ok = _run_venv("python", str(WEB_ASSETS_SCRIPT))
+    if ok:
+        _ok("web assets downloaded")
+    else:
+        _warn("failed to download web assets (live webcam page needs them)")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -177,6 +200,7 @@ def main() -> None:
     _ensure_venv()
     _install_deps()
     _download_model()
+    _download_web_assets()
 
     run_cmd = "uv run python scripts/serve.py" if _has_uv() else ".venv\\Scripts\\python scripts\\serve.py"
     print("\n==================== Done ====================")

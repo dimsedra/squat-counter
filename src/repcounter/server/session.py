@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 import json
+import threading
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -63,8 +64,14 @@ class SessionRecorder:
         rec.stop()
     """
 
-    def __init__(self, *, label: str = "", source: str = "webcam") -> None:
-        self.session_id = uuid.uuid4().hex[:12]
+    def __init__(
+        self,
+        *,
+        label: str = "",
+        source: str = "webcam",
+        session_id: str | None = None,
+    ) -> None:
+        self.session_id = session_id or uuid.uuid4().hex[:12]
         self.label = label
         self.source = source
         self._started: float = 0.0
@@ -78,6 +85,10 @@ class SessionRecorder:
         self._partial_reps: int = 0
         self._total_frames: int = 0
         self._paused_frames: int = 0
+        # Guards append_frame / append_rep_event / stop against concurrent
+        # access (WS worker thread writing while an HTTP stop closes files).
+        self._lock = threading.Lock()
+        self._closed = False
 
     @property
     def dir(self) -> Path:
@@ -122,12 +133,15 @@ class SessionRecorder:
             paused=step.paused if step else False,
             partial=step.partial if step else False,
         )
-        if self._frame_fh:
-            csv.DictWriter(self._frame_fh, fieldnames=_FRAME_FIELDS).writerow(asdict(rec))
-            self._frame_fh.flush()
-        self._total_frames += 1
-        if rec.paused:
-            self._paused_frames += 1
+        with self._lock:
+            if self._closed:
+                return
+            if self._frame_fh:
+                csv.DictWriter(self._frame_fh, fieldnames=_FRAME_FIELDS).writerow(asdict(rec))
+                self._frame_fh.flush()
+            self._total_frames += 1
+            if rec.paused:
+                self._paused_frames += 1
 
     def append_rep_event(self, event, timestamp: float) -> None:
         rec = RepEventRecord(
@@ -136,20 +150,27 @@ class SessionRecorder:
             depth_angle=event.depth_angle,
             is_full=event.is_full,
         )
-        if self._event_fh:
-            csv.DictWriter(self._event_fh, fieldnames=_EVENT_FIELDS).writerow(asdict(rec))
-            self._event_fh.flush()
-        self._total_reps = event.rep_index
-        if event.is_full:
-            self._full_reps += 1
-        else:
-            self._partial_reps += 1
+        with self._lock:
+            if self._closed:
+                return
+            if self._event_fh:
+                csv.DictWriter(self._event_fh, fieldnames=_EVENT_FIELDS).writerow(asdict(rec))
+                self._event_fh.flush()
+            self._total_reps = event.rep_index
+            if event.is_full:
+                self._full_reps += 1
+            else:
+                self._partial_reps += 1
 
     def stop(self) -> Path:
         import time
-        self._stopped = time.monotonic()
-        self._close_files()
-        self._write_summary()
+        with self._lock:
+            if self._closed:
+                return self.dir
+            self._closed = True
+            self._stopped = time.monotonic()
+            self._close_files()
+            self._write_summary()
         return self.dir
 
     def _close_files(self) -> None:

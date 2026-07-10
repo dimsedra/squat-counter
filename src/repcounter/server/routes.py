@@ -5,27 +5,59 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+import time
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from starlette.requests import Request
 
-from repcounter.capture import VideoFileCapture, WebcamCapture
-from repcounter.server.pipeline import FrameData, PipelineState, run_pipeline
+from repcounter.capture import VideoFileCapture
+from repcounter.server.pipeline import PipelineState, run_pipeline
 from repcounter.server.session import SessionRecorder, SESSIONS_DIR
-from repcounter.server.templates import render_index, render_sessions, render_watch
+from repcounter.server.templates import (
+    render_index, render_sessions, render_watch, render_watch_webcam,
+)
+from repcounter.server.webcam import WebcamSession, process_landmarks
 
 router = APIRouter()
 
 MODEL_PATH = Path(__file__).resolve().parent.parent.parent.parent / "models" / "pose_landmarker_full.task"
 
-# In-memory session store: session_id -> PipelineState
+# In-memory session store: session_id -> PipelineState (uploaded-video path)
 _sessions: dict[str, PipelineState] = {}
 
-# Global webcam session (singleton: one webcam at a time)
-_webcam_state: PipelineState | None = None
-_webcam_lock = threading.Lock()
+# Browser-webcam sessions: session_id -> WebcamSession (ADR-0008). Created lazily
+# on WebSocket connect and removed on explicit stop or by the idle reaper.
+_webcam_sessions: dict[str, WebcamSession] = {}
+
+# Reject WS messages larger than this (33*2 landmarks of JSON fit in a few KB).
+MAX_WS_MSG_BYTES = 64 * 1024
+
+# Idle-webcam-session reaper: stop + drop sessions with no live connection.
+_REAP_IDLE_SEC = 120.0
+_REAP_INTERVAL_SEC = 30.0
+_reaper_started = False
+
+
+def _ensure_reaper() -> None:
+    """Start the idle-session reaper once, on the running event loop."""
+    global _reaper_started
+    if _reaper_started:
+        return
+    _reaper_started = True
+    asyncio.create_task(_reaper_loop())
+
+
+async def _reaper_loop() -> None:
+    while True:
+        await asyncio.sleep(_REAP_INTERVAL_SEC)
+        now = time.monotonic()
+        for sid, s in list(_webcam_sessions.items()):
+            if s.active_conns <= 0 and now - s.last_activity > _REAP_IDLE_SEC:
+                s.recorder.stop()
+                _webcam_sessions.pop(sid, None)
 
 
 def _start_pipeline(capture, session: SessionRecorder | None = None) -> tuple[str, PipelineState]:
@@ -54,23 +86,30 @@ async def index(request: Request):
 @router.get("/watch", response_class=HTMLResponse)
 async def watch(request: Request, session: str | None = None, source: str | None = None):
     if source == "webcam":
+        # Live webcam runs MediaPipe in the browser (ADR-0008); the server only
+        # counts from landmarks. No server-side camera is opened, and no session
+        # is created here — the session is created lazily when the WebSocket
+        # connects (avoids leaking recorders for page loads that never stream).
         if not MODEL_PATH.exists():
             return HTMLResponse("Model not found. Run scripts/fetch_model.py first.", status_code=500)
-        global _webcam_state
-        with _webcam_lock:
-            if _webcam_state and _webcam_state.running:
-                _webcam_state.running = False
-            rec = SessionRecorder(label="webcam_live", source="webcam")
-            cap = WebcamCapture(0)
-            session_id, state = _start_pipeline(cap, session=rec)
-            _webcam_state = state
-            _sessions[session_id] = state
-        return render_watch(session_id, source="webcam")
+        session_id = uuid.uuid4().hex[:12]
+        return render_watch_webcam(session_id)
 
     if session and session in _sessions:
         return render_watch(session, source="recorded")
 
     return render_index()
+
+
+@router.get("/model/pose_landmarker_full.task")
+async def model_asset():
+    if not MODEL_PATH.exists():
+        return {"error": "model not found"}
+    return FileResponse(
+        str(MODEL_PATH),
+        media_type="application/octet-stream",
+        filename="pose_landmarker_full.task",
+    )
 
 
 @router.get("/sessions", response_class=HTMLResponse)
@@ -175,8 +214,78 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
         pass
 
 
+def _complete_payload(sess: WebcamSession) -> dict:
+    summary = sess.recorder.summary()
+    return {
+        "complete": True,
+        "rep_count": summary.get("reps", sess.counter.rep_count),
+        "duration_sec": summary.get("duration_sec", 0),
+    }
+
+
+@router.websocket("/ws/webcam/{session_id}")
+async def webcam_ws(ws: WebSocket, session_id: str):
+    """Bidirectional WS for the browser-webcam path (ADR-0008).
+
+    Receives per-frame landmark messages from the browser, drives the counting
+    chain, and returns the count/state payload for display. The session is
+    created lazily on first connect and reused across reconnects; it is finalised
+    on an explicit ``{"stop": true}`` message or by the idle reaper. A transient
+    disconnect does NOT stop the session, so the client can reconnect and resume.
+    """
+    await ws.accept()
+    _ensure_reaper()
+
+    sess = _webcam_sessions.get(session_id)
+    if sess is None:
+        rec = SessionRecorder(label="webcam_live", source="webcam", session_id=session_id)
+        rec.start()
+        sess = WebcamSession(rec)
+        _webcam_sessions[session_id] = sess
+    sess.active_conns += 1
+
+    try:
+        while True:
+            try:
+                raw = await ws.receive_text()
+            except WebSocketDisconnect:
+                break
+
+            if len(raw) > MAX_WS_MSG_BYTES:
+                await ws.send_json({"error": "message too large"})
+                continue
+            try:
+                msg = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                await ws.send_json({"error": "invalid json"})
+                continue
+            if not isinstance(msg, dict):
+                await ws.send_json({"error": "message must be an object"})
+                continue
+
+            if msg.get("stop"):
+                sess.recorder.stop()
+                _webcam_sessions.pop(session_id, None)
+                await ws.send_json(_complete_payload(sess))
+                break
+
+            try:
+                payload = await asyncio.to_thread(process_landmarks, sess, msg)
+            except ValueError as exc:
+                await ws.send_json({"error": str(exc)})
+                continue
+            await ws.send_json(payload)
+    finally:
+        sess.active_conns -= 1
+
+
 @router.post("/session/{session_id}/stop")
 async def stop_session(session_id: str):
+    sess = _webcam_sessions.pop(session_id, None)
+    if sess:
+        out_dir = sess.recorder.stop()
+        return {"dir": str(out_dir), "summary": sess.recorder.summary()}
+
     state = _sessions.get(session_id)
     if not state:
         return {"error": "session not found"}
@@ -189,11 +298,14 @@ async def stop_session(session_id: str):
 
 
 @router.get("/session/{session_id}/download")
-async def download_session(session_id: str, fmt: str = "csv"):
+async def download_session(session_id: str, format: str = "csv"):
     d = None
     state = _sessions.get(session_id)
+    sess = _webcam_sessions.get(session_id)
     if state and state.session:
         d = state.session.dir
+    elif sess:
+        d = sess.recorder.dir
     else:
         candidate = SESSIONS_DIR / session_id
         if candidate.exists():
@@ -201,7 +313,7 @@ async def download_session(session_id: str, fmt: str = "csv"):
     if not d:
         return {"error": "session not found"}
 
-    if fmt == "json":
+    if format == "json":
         p = d / "summary.json"
     else:
         p = d / "frames.csv"

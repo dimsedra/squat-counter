@@ -67,3 +67,49 @@ async def test_download_nonexistent_session(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["error"] == "session not found"
+
+
+@pytest.mark.asyncio
+async def test_webcam_page_renders(client):
+    from repcounter.server import routes
+
+    if not routes.MODEL_PATH.exists():
+        pytest.skip("model asset not present")
+    resp = await client.get("/watch", params={"source": "webcam"})
+    assert resp.status_code == 200
+    # Browser-side MediaPipe wiring (ADR-0008) must be present.
+    assert "getUserMedia" in resp.text
+    assert "/ws/webcam/" in resp.text
+    assert "/static/vision/vision_bundle.mjs" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_webcam_page_does_not_create_session(client):
+    """GET must not create a recorder (sessions are created on WS connect)."""
+    from repcounter.server import routes
+
+    if not routes.MODEL_PATH.exists():
+        pytest.skip("model asset not present")
+    before = len(routes._webcam_sessions)
+    await client.get("/watch", params={"source": "webcam"})
+    assert len(routes._webcam_sessions) == before
+
+
+@pytest.mark.asyncio
+async def test_download_json_returns_summary(client):
+    import shutil
+
+    from repcounter.server.session import SessionRecorder
+
+    rec = SessionRecorder(label="dltest", source="webcam")
+    rec.start()
+    rec.stop()  # writes summary.json
+    try:
+        resp = await client.get(
+            f"/session/{rec.session_id}/download", params={"format": "json"}
+        )
+        assert resp.status_code == 200
+        assert b'"id"' in resp.content  # summary.json content, not CSV
+        assert "summary.json" in resp.headers.get("content-disposition", "")
+    finally:
+        shutil.rmtree(rec.dir, ignore_errors=True)

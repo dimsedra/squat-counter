@@ -26,3 +26,6 @@ models/
 tests/fixtures/source.mp4
 tests/fixtures/clip/
 tests/fixtures/_*
+
+# Self-hosted MediaPipe web assets (fetched via scripts/fetch_web_assets.py)
+src/repcounter/server/static/vision/

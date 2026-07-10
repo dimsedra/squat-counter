@@ -64,6 +64,11 @@ class RepCounter:
     def partial(self) -> bool:
         return self._partial
 
+    @property
+    def standing_angle(self) -> float | None:
+        """The calibrated standing angle, or None while uncalibrated."""
+        return self._standing_angle
+
     def _validate_standing(self, standing_angle: float) -> None:
         if not (self.depth_threshold + self.standing_margin < standing_angle <= 180.0):
             raise ValueError(
