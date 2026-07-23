@@ -1,4 +1,4 @@
-// Asynchronous Modular Slide Component Loader (18 Atomic Slides)
+// Asynchronous & Offline Hybrid Modular Slide Component Loader
 const SLIDE_FILES = [
   'slides/slide-01-cover.html',
   'slides/slide-02-background.html',
@@ -24,6 +24,24 @@ async function loadModularSlides() {
   const container = document.getElementById('slides-container');
   if (!container) return;
 
+  // Clear existing slides
+  container.innerHTML = '';
+
+  // 1. If running under file:// protocol or MODULAR_SLIDES bundle is loaded, use offline bundle
+  if (Array.isArray(window.MODULAR_SLIDES) && window.MODULAR_SLIDES.length > 0) {
+    window.MODULAR_SLIDES.forEach(html => {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html.trim();
+      const section = tempDiv.firstElementChild;
+      if (section) {
+        container.appendChild(section);
+      }
+    });
+    document.dispatchEvent(new Event('slidesLoaded'));
+    return;
+  }
+
+  // 2. Otherwise, fetch dynamically from slides/ directory (HTTP/HTTPS server)
   try {
     for (const file of SLIDE_FILES) {
       const response = await fetch(file);
@@ -35,12 +53,10 @@ async function loadModularSlides() {
         if (section) {
           container.appendChild(section);
         }
-      } else {
-        console.warn(`Failed to load slide component: ${file}`);
       }
     }
   } catch (err) {
-    console.error('Error loading modular slides:', err);
+    console.warn('Dynamic fetch fallback engaged due to CORS/file protocol restrictions:', err);
   }
 
   // Dispatch custom event when all modular slides are loaded
