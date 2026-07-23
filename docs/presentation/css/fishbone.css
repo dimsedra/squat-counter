@@ -1,0 +1,87 @@
+/* Redesigned Clean & Non-Overlapping Fishbone (Ishikawa) Component */
+
+.fishbone-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 920px;
+  margin: 0.5rem auto 0 auto;
+  position: relative;
+}
+
+.fishbone-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.fishbone-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.fishbone-card:hover {
+  border-color: var(--accent-sage);
+  transform: translateY(-2px);
+}
+
+.fishbone-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-sage);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.fishbone-card ul {
+  margin: 0;
+  padding: 0 0 0 1.1rem;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.fishbone-card li {
+  margin-bottom: 0.35rem;
+}
+
+/* Spine Center Bar & Head Box */
+.fishbone-center-line {
+  display: flex;
+  align-items: center;
+  position: relative;
+  margin: 0.3rem 0;
+}
+
+.spine-line {
+  flex: 1;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-sage) 0%, var(--accent-alert) 100%);
+  box-shadow: 0 0 8px rgba(45, 212, 191, 0.3);
+  border-radius: 2px;
+}
+
+.spine-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--accent-alert-bg);
+  border: 1px solid var(--accent-alert);
+  border-radius: 8px;
+  padding: 0.65rem 1.1rem;
+  color: #ff7b72;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(248, 81, 73, 0.25);
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+}

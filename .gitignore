@@ -21,6 +21,8 @@ data/
 sessions/
 uploads/
 videos/
+*.mp4
+*.zip
 
 # Downloaded model + generated test fixtures (fetched via scripts/)
 models/

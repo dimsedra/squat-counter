@@ -1,0 +1,27 @@
+<section>
+  <div class="badge badge-success">
+    <i data-lucide="bar-chart-2"></i> Langkah 6 — Evaluasi Hasil
+  </div>
+  <h2>Pencapaian Akurasi Keseluruhan Sistem</h2>
+  <p class="text-muted">
+    Hasil pengujian pada 56 trial video (560 repetisi ground-truth) membuktikan target QCC terlampaui dengan sukses:
+  </p>
+  <div class="grid-2">
+    <div>
+      <div class="stat-card" style="margin-bottom: 1rem;">
+        <div class="stat-number">83.57%</div>
+        <div class="stat-label">Akurasi Rata-rata Keseluruhan (Target &ge; 80% TERLAMPAUI)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color: var(--accent-success);">64.29%</div>
+        <div class="stat-label">Trial Sempurna 100% Tepat Tanpa Eror (MAE = 0)</div>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="accuracyPieChart"></canvas>
+    </div>
+  </div>
+  <div class="bridging-footer" style="color: var(--accent-sage);">
+    → Analisis Mendalam: Mengapa 35.71% sisa trial tidak mencapai exact match? Faktor apa yang paling mempengaruhi?
+  </div>
+</section>

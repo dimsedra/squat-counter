@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QCC Presentation - Real-Time Squat Repetition Counter</title>
+  
+  <!-- Reveal.js CSS via CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reset.css">
+  
+  <!-- Custom Proposal 3 Dark Graphite & Sage Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Bulletproof CSS Fishbone Diagram Stylesheet -->
+  <link rel="stylesheet" href="css/fishbone.css">
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide/dist/umd/lucide.min.js"></script>
+
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Mermaid.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+  <!-- Floating Right Sidebar Icon Toggle Button -->
+  <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Buka Sidebar Navigasi (Tekan M)">
+    <i data-lucide="layout-list"></i>
+  </button>
+
+  <!-- Backdrop Dim Overlay -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <!-- Right Slide-In Sidebar Navigation Drawer -->
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <h3><i data-lucide="compass"></i> Navigasi Slide QCC</h3>
+      <button id="sidebar-close-btn" class="sidebar-close-btn" title="Tutup Sidebar (Esc)">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="sidebar-slide-list" id="sidebar-slide-list">
+      <!-- Generated dynamically by Vanilla JS -->
+    </div>
+  </aside>
+
+  <div class="reveal">
+    <!-- Modular Slides Container -->
+    <div class="slides" id="slides-container">
+      <!-- Modular slide components (slide-01.html to slide-18.html) loaded asynchronously -->
+    </div>
+  </div>
+
+  <!-- Modular Slide Loader Script -->
+  <script src="js/slide-loader.js"></script>
+
+  <!-- Reveal.js Engine via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.js"></script>
+
+  <!-- Main Presentation Initialization Script -->
+  <script src="js/main.js"></script>
+</body>
+</html>

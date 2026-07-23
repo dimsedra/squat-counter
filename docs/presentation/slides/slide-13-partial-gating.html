@@ -1,0 +1,44 @@
+<section>
+  <div class="badge badge-success">
+    <i data-lucide="shield-check"></i> Langkah 6 — Evaluasi Kedalaman Squat
+  </div>
+  <h2>Pengaruh Kedalaman Gerakan & Penolakan Partial Squat</h2>
+  <p class="text-muted">
+    Evaluasi sistem berdasarkan kategori kedalaman eksekusi squat (Parallel, Penuh, dan Partial):
+  </p>
+  <div class="grid-3" style="margin-top: 1rem;">
+    <div class="stat-card">
+      <div class="stat-number">1.25</div>
+      <div class="stat-label">MAE Parallel (&le; 100°)<br><span style="color: var(--accent-success); font-size: 0.78rem;">✓ Sah Dikreditkan</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">1.33</div>
+      <div class="stat-label">MAE Penuh / Full (&lt; 90°)<br><span style="color: var(--accent-success); font-size: 0.78rem;">✓ Sah Dikreditkan</span></div>
+    </div>
+    <div class="stat-card" style="border-color: rgba(248, 81, 73, 0.3);">
+      <div class="stat-number" style="color: var(--accent-alert);">5.75</div>
+      <div class="stat-label">MAE Partial (&gt; 100°)<br><span style="color: var(--accent-alert); font-size: 0.78rem;">❌ 100% Ditolak FSM</span></div>
+    </div>
+  </div>
+  <div class="grid-2" style="margin-top: 0.85rem; gap: 1rem;">
+    <div class="card" style="padding: 1rem 1.25rem;">
+      <div class="card-title" style="font-size: 0.95rem;">
+        <i data-lucide="check-circle"></i> Sisi Positif Penolakan FSM
+      </div>
+      <div class="card-desc" style="font-size: 0.84rem;">
+        FSM Hysteresis <strong>berhasil 100% menolak gerakan dangkal</strong> (0 rep sah dikreditkan dari 10 trial), mencegah memalsukan hitungan.
+      </div>
+    </div>
+    <div class="card" style="padding: 1rem 1.25rem;">
+      <div class="card-title card-title-alert" style="font-size: 0.95rem;">
+        <i data-lucide="alert-triangle"></i> Akar Masalah Ambang Sudut Partial
+      </div>
+      <div class="card-desc" style="font-size: 0.84rem;">
+        Banyak partial squat terlalu dangkal (120°–135°) tidak terdeteksi statusnya karena ambang pemicu FSM terlalu ketat, dianggap sebagai <em>standing sway</em>.
+      </div>
+    </div>
+  </div>
+  <div class="bridging-footer" style="color: var(--accent-sage);">
+    → Rekomendasi FSM: Perlu penyesuaian ambang pemicu entri (&theta;<sub>entry</sub> = &theta;<sub>standing</sub> - 15°) untuk peringatan visual "Squat Kurang Dalam".
+  </div>
+</section>

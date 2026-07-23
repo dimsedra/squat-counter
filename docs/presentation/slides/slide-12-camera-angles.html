@@ -1,0 +1,42 @@
+<section>
+  <div class="badge badge-success">
+    <i data-lucide="video"></i> Langkah 6 — Evaluasi Sudut Kamera
+  </div>
+  <h2>Keunggulan Presisi Kamera Samping (MAE 0.250)</h2>
+  <p class="text-muted">
+    Evaluasi mendalam menunjukkan bahwa posisi kamera adalah penentu utama tingkat presisi hitungan:
+  </p>
+  <div class="grid-2">
+    <div class="chart-container">
+      <canvas id="cameraViewChart"></canvas>
+    </div>
+    <div class="dual-video-wrapper">
+      <div class="dual-video-grid">
+        <div class="video-box-small">
+          <video controls preload="metadata">
+            <source src="assets/side (1).mp4" type="video/mp4">
+            Browser Anda tidak mendukung video.
+          </video>
+          <div class="video-box-tag" style="background-color: var(--accent-success-bg); color: var(--accent-success); border: 1px solid rgba(63,185,80,0.3);">
+            Samping (MAE 0.250)
+          </div>
+        </div>
+        <div class="video-box-small">
+          <video controls preload="metadata">
+            <source src="assets/front (1).mp4" type="video/mp4">
+            Browser Anda tidak mendukung video.
+          </video>
+          <div class="video-box-tag" style="background-color: var(--accent-alert-bg); color: var(--accent-alert); border: 1px solid rgba(248,81,73,0.3);">
+            Depan (MAE 2.625)
+          </div>
+        </div>
+      </div>
+      <div class="video-caption">
+        <i data-lucide="film"></i> Perbandingan Langsung: Kamera Samping (Bidang 2D) vs Kamera Depan (Foreshortening)
+      </div>
+    </div>
+  </div>
+  <div class="bridging-footer" style="color: var(--accent-sage);">
+    → Kesimpulan Sudut: Pada sudut samping (90°), akurasi mencapai 97.5% (MAE 0.250 &lt; target 0.5 rep).
+  </div>
+</section>

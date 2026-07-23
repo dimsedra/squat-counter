@@ -1,0 +1,79 @@
+<section>
+  <div class="badge badge-sage">
+    <i data-lucide="git-branch"></i> Langkah 3 — Analisis Akar Masalah
+  </div>
+  <h2>Memetakan Akar Penyebab Eror (Diagram Fishbone)</h2>
+  <p class="text-muted" style="margin-bottom: 0.5rem;">
+    Tim meneliti 4 kategori penyebab eror (Man, Machine, Material, Method) untuk menemukan faktor paling dominan.
+  </p>
+  
+  <div style="width: 100%; max-width: 940px; margin: 0 auto; display: flex; justify-content: center;">
+    <svg viewBox="0 0 940 410" width="100%" height="410" style="overflow: visible; font-family: 'Plus Jakarta Sans', system-ui, sans-serif;">
+      
+      <defs>
+        <marker id="spine-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f85149" />
+        </marker>
+        <marker id="bone-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
+          <circle cx="5" cy="5" r="4" fill="#2dd4bf" />
+        </marker>
+      </defs>
+
+      <!-- Central Spine Line -->
+      <line x1="50" y1="205" x2="675" y2="205" stroke="#2dd4bf" stroke-width="4" stroke-linecap="round" marker-end="url(#spine-arrow)" />
+
+      <!-- Angled Diagonal Bones -->
+      <line x1="190" y1="120" x2="290" y2="205" stroke="#2dd4bf" stroke-width="3" marker-start="url(#bone-dot)" />
+      <line x1="490" y1="120" x2="590" y2="205" stroke="#2dd4bf" stroke-width="3" marker-start="url(#bone-dot)" />
+      <line x1="190" y1="295" x2="290" y2="205" stroke="#2dd4bf" stroke-width="3" marker-start="url(#bone-dot)" />
+      <line x1="490" y1="295" x2="590" y2="205" stroke="#2dd4bf" stroke-width="3" marker-start="url(#bone-dot)" />
+
+      <!-- Fish Head Problem Box -->
+      <g transform="translate(685, 165)">
+        <rect x="0" y="0" width="240" height="80" rx="12" fill="#1a2024" stroke="#f85149" stroke-width="2" />
+        <text x="120" y="32" text-anchor="middle" fill="#f85149" font-size="13" font-weight="700" letter-spacing="0.05em">❌ MASALAH UTAMA</text>
+        <text x="120" y="54" text-anchor="middle" fill="#e8ecef" font-size="12" font-weight="700">EROR PERHITUNGAN REPETISI</text>
+      </g>
+
+      <!-- Category 1: Man -->
+      <g transform="translate(30, 5)">
+        <rect x="0" y="0" width="280" height="110" rx="10" fill="#1a2024" stroke="#2a3238" stroke-width="1.5" />
+        <text x="15" y="26" fill="#2dd4bf" font-size="13" font-weight="700">👤 1. Man (Postur & Eksekusi)</text>
+        <line x1="15" y1="34" x2="265" y2="34" stroke="#2a3238" stroke-width="1" />
+        <text x="15" y="52" fill="#94a3b8" font-size="11">• Variasi tinggi & proporsi badan</text>
+        <text x="15" y="70" fill="#94a3b8" font-size="11">• Baseline berdiri tidak seragam</text>
+        <text x="15" y="88" fill="#94a3b8" font-size="11">• Eksekusi squat setengah (partial)</text>
+      </g>
+
+      <!-- Category 2: Machine -->
+      <g transform="translate(340, 5)">
+        <rect x="0" y="0" width="290" height="110" rx="10" fill="#1a2024" stroke="#2a3238" stroke-width="1.5" />
+        <text x="15" y="26" fill="#2dd4bf" font-size="13" font-weight="700">📷 2. Machine (Geometri Kamera)</text>
+        <line x1="15" y1="34" x2="275" y2="34" stroke="#2a3238" stroke-width="1" />
+        <text x="15" y="52" fill="#94a3b8" font-size="11">• Foreshortening sudut depan (0°)</text>
+        <text x="15" y="70" fill="#94a3b8" font-size="11">• Framing clipping mata kaki jarak 1m</text>
+        <text x="15" y="88" fill="#94a3b8" font-size="11">• Ketidakstabilan z monokular</text>
+      </g>
+
+      <!-- Category 3: Material -->
+      <g transform="translate(30, 295)">
+        <rect x="0" y="0" width="280" height="110" rx="10" fill="#1a2024" stroke="#2a3238" stroke-width="1.5" />
+        <text x="15" y="26" fill="#2dd4bf" font-size="13" font-weight="700">👕 3. Material & Environment</text>
+        <line x1="15" y1="34" x2="265" y2="34" stroke="#2a3238" stroke-width="1" />
+        <text x="15" y="52" fill="#94a3b8" font-size="11">• Celana longgar menutupi lutut</text>
+        <text x="15" y="70" fill="#94a3b8" font-size="11">• Pencahayaan redup kurangi kontras</text>
+        <text x="15" y="88" fill="#94a3b8" font-size="11">• Backlighting memicu silhouette</text>
+      </g>
+
+      <!-- Category 4: Method -->
+      <g transform="translate(340, 295)">
+        <rect x="0" y="0" width="290" height="110" rx="10" fill="#1a2024" stroke="#2a3238" stroke-width="1.5" />
+        <text x="15" y="26" fill="#2dd4bf" font-size="13" font-weight="700">💻 4. Method (Algoritma)</text>
+        <line x1="15" y1="34" x2="275" y2="34" stroke="#2a3238" stroke-width="1" />
+        <text x="15" y="52" fill="#94a3b8" font-size="11">• Single threshold chatter (hit. ganda)</text>
+        <text x="15" y="70" fill="#94a3b8" font-size="11">• Threshold statis tidak adaptif</text>
+        <text x="15" y="88" fill="#94a3b8" font-size="11">• Kegagalan memfilter partial squat</text>
+      </g>
+    </svg>
+  </div>
+</section>

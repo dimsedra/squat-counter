@@ -1,0 +1,33 @@
+<section>
+  <div class="badge badge-sage">
+    <i data-lucide="cpu"></i> Langkah 5 — Jalur Eksekusi & Demo Video
+  </div>
+  <h2>Fleksibilitas Eksekusi: Dual Mode Deployment</h2>
+  <p class="text-muted">
+    Arsitektur 5-Layer ini mendukung dua mode penggunaan fleksibel tanpa perubahan pada modul kalkulasi utama:
+  </p>
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom: 0.85rem; padding: 1.2rem 1.4rem;">
+        <div class="card-title">Live Web Client-Server Mode</div>
+        <div class="card-desc">Deteksi pose di browser pengguna (MediaPipe JS), lalu mengirim koordinat terkompresi (~1–2 KB/frame) via WebSocket ke server untuk dihitung secara <em>real-time</em>.</div>
+      </div>
+      <div class="card" style="padding: 1.2rem 1.4rem;">
+        <div class="card-title">Headless Batch Processor Mode</div>
+        <div class="card-desc">Pengolahan paralel multi-worker headless script untuk merekapitulasi seluruh folder video eksperimen secara otomatis ke 1 CSV summary.</div>
+      </div>
+    </div>
+    <div class="video-wrapper">
+      <video controls preload="metadata">
+        <source src="assets/live interface (1).mp4" type="video/mp4">
+        Browser Anda tidak mendukung player video.
+      </video>
+      <div class="video-caption">
+        <i data-lucide="play-circle"></i> Demo Video: Live Web Interface & Real-Time Tracking
+      </div>
+    </div>
+  </div>
+  <div class="bridging-footer" style="color: var(--accent-sage);">
+    → Pembuktian Data: Mari kita lihat hasil evaluasi nyata dari 56 trial video (560 repetisi ground-truth).
+  </div>
+</section>

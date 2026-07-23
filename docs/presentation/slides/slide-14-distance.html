@@ -1,0 +1,51 @@
+<section>
+  <div class="badge badge-success">
+    <i data-lucide="maximize-2"></i> Langkah 6 — Evaluasi Jarak Kamera
+  </div>
+  <h2>Analisis Jarak Kamera & Interaksi Sudut (1m vs 2m)</h2>
+  <p class="text-muted">
+    Perbandingan presisi MAE antara jarak 1m (rerata MAE 0.92) dan 2m (rerata MAE 1.42) pada berbagai arah sudut kamera:
+  </p>
+  <div class="grid-2" style="margin-top: 0.85rem;">
+    <div class="stat-card" style="padding: 1rem;">
+      <div class="stat-number">0.92</div>
+      <div class="stat-label">Rata-rata MAE Jarak 1 m<br><span style="color: var(--accent-success); font-size: 0.78rem;">✓ Presisi Tinggi (Dekat)</span></div>
+    </div>
+    <div class="stat-card" style="padding: 1rem;">
+      <div class="stat-number" style="color: var(--accent-alert);">1.42</div>
+      <div class="stat-label">Rata-rata MAE Jarak 2 m<br><span style="color: var(--text-muted); font-size: 0.78rem;">Tanpa Base-End</span></div>
+    </div>
+  </div>
+  <div class="grid-3" style="margin-top: 0.85rem;">
+    <div class="card" style="padding: 1rem 1.1rem;">
+      <div class="card-title" style="font-size: 0.95rem;">
+        <i data-lucide="check-circle-2"></i> Samping (Side)
+      </div>
+      <div class="card-desc" style="font-size: 0.84rem;">
+        <strong>MAE: 0.00 (1m) &rarr; 0.50 (2m)</strong><br>
+        Sangat stabil! Hanya meningkat sedikit, presisi proyeksi 2D tetap terjamin.
+      </div>
+    </div>
+    <div class="card" style="padding: 1rem 1.1rem;">
+      <div class="card-title" style="font-size: 0.95rem; color: var(--accent-sage);">
+        <i data-lucide="trending-up"></i> Serong (Diag)
+      </div>
+      <div class="card-desc" style="font-size: 0.84rem;">
+        <strong>MAE: 1.00 (1m) &rarr; 0.25 (2m)</strong><br>
+        Membaik di 2m! Cakupan bidang serong menjadi lebih optimal saat jarak dijauhkan.
+      </div>
+    </div>
+    <div class="card" style="padding: 1rem 1.1rem;">
+      <div class="card-title card-title-alert" style="font-size: 0.95rem;">
+        <i data-lucide="alert-triangle"></i> Depan (Front)
+      </div>
+      <div class="card-desc" style="font-size: 0.84rem;">
+        <strong>MAE: 1.75 (1m) &rarr; 3.50 (2m)</strong><br>
+        Sensitivitas eror paling tinggi! <em>Perspective foreshortening</em> semakin parah di 2m.
+      </div>
+    </div>
+  </div>
+  <div class="bridging-footer" style="color: var(--accent-sage);">
+    → Evaluasi Lingkungan: Selanjutnya, bagaimana ketahanan sistem saat menghadapi variasi pencahayaan rumah?
+  </div>
+</section>

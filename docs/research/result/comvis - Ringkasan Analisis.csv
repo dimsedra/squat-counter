@@ -1,0 +1,5 @@
+Atlet,MAE,,,Kedalaman,MAE,,,Arah Kamera,MAE,,,Metrik Keseluruhan,Nilai
+A1,1,,,parallel,"1,25",,,depan,"2,625",,,MAPE,"16,43%"
+A2,"0,5",,,partial,"5,75",,,samping,"0,25",,,Rata-rata Akurasi,"83,57%"
+A3,"1,214285714",,,penuh,"1,333333333",,,serong,"1,725",,,,
+A4,"3,857142857",,,,,,,,,,,,
